@@ -1,8 +1,7 @@
 const taskInput = document.getElementById('task-input');
 const taskAddButton = document.getElementById('task-add');
 
-const tasksListUnfinished = document.getElementById('tasks-unfinished');
-const tasksListFinished = document.getElementById('tasks-finished');
+const tasksList = document.getElementById('tasks');
 
 const storage = {
     keys: {
@@ -77,6 +76,11 @@ function createTaskElement({ id, title, completed = false, editing = false }) {
     label.innerText = title;
 
     const input = document.createElement('input');
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            editTask(id, input, editing);
+        }
+    });
     if (!editing) {
         input.classList.add('not-visible');
     }
@@ -105,26 +109,11 @@ function createTaskElement({ id, title, completed = false, editing = false }) {
 }
 
 function render() {
-    tasksListUnfinished.innerHTML = null;
-    tasksListFinished.innerHTML = null;
-    const tasksUnfinished = [];
-    const tasksFinished = [];
+    tasksList.innerHTML = null;
 
     for (const task of tasks) {
-        if (task.completed) {
-            tasksFinished.push(task);
-        } else {
-            tasksUnfinished.push(task);
-        }
-    }
-
-    for (const task of tasksUnfinished) {
         const taskElement = createTaskElement(task);
-        tasksListUnfinished.appendChild(taskElement);
-    }
-    for (const task of tasksFinished) {
-        const taskElement = createTaskElement(task);
-        tasksListFinished.appendChild(taskElement);
+        tasksList.appendChild(taskElement);
     }
 }
 render();
@@ -134,7 +123,7 @@ function addNewTask() {
 
     if (title) {
         const taskElement = createTaskElement({ id: lastIndex, title });
-        tasksListUnfinished.appendChild(taskElement);
+        tasksList.appendChild(taskElement);
         taskInput.value = '';
         tasks.push({ id: lastIndex, title, completed: false, editing: false });
         storage.save(storage.keys.tasks, tasks);
@@ -144,3 +133,8 @@ function addNewTask() {
 }
 
 taskAddButton.addEventListener('click', addNewTask);
+taskInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        addNewTask();
+    }
+});
