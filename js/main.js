@@ -3,11 +3,12 @@ var inputTask=document.getElementById('new-task');
 var unfinishedTasks=document.getElementById('unfinished-tasks');
 var finishedTasks=document.getElementById('finished-tasks');
 
+
 function createNewElement(task) {
     var listItem=document.createElement('li');
-    var checkbox=document.createElement('input');
+    var checkbox=document.createElement('button');
     checkbox.className="material-icons checkbox";
-    checkbox.type="checkbox";
+    checkbox.innerHTML="<i class='material-icons'>check_box_outline_blank</i>";
     var label=document.createElement('label');
     label.innerText=task;
     var input=document.createElement('input');
@@ -35,6 +36,7 @@ function addTask() {
         bindTaskEvents(listItem,finishTask)
         inputTask.value="";
     }
+    save();
 }
 addButton.onclick=addTask;
 
@@ -42,38 +44,40 @@ function deleteTask() {
 var listItem=this.parentNode;
 var ul=listItem.parentNode;
 ul.removeChild(listItem);
-
+save();
 }
 
 function editTask() {
     var editButton=this;
     var listItem=this.parentNode;
-    var label=listItem.querySelector('lebel');
-    var input=listItem.querySelector('inpute[type=text]');
+    var label=listItem.querySelector('label');
+    var input=listItem.querySelector('input[type=text]');
 
     var conteintsClass=listItem.classList.contains('editMode');
 
-    if(conteintsClass){
+
+    if(conteintsClass) {
         label.innerText=input.value;
         editButton.className="material-icons edit";
         editButton.innerHTML="<i class='material-icons'>edit</i>";
-    }else{
-        input.value=label,innerText;
+        save();
+    } else {
+        input.value=label.innerText;
         editButton.className="material-icons save";
         editButton.innerHTML="<i class='material-icons'>save</i>";
 
     }
     listItem.classList.toggle('editMode');
-    }
+}
 
 function finishTask() {
     var listItem=this.parentNode;
     var checkbox=listItem.querySelector('button.checkbox');
     checkbox.className="material-icons checkbox";
     checkbox.innerHTML="<i class='material-icons'>check_box</i>";
-    
-    finishTask.appendChild(listItems);
+    finishedTasks.appendChild(listItem);
     bindTaskEvents(listItem,unfinishTask);
+    save();
 }
 
 function unfinishTask() {
@@ -82,9 +86,9 @@ function unfinishTask() {
     checkbox.className="material-icons checkbox";
     checkbox.innerHTML="<i class='material-icons'>check_box_outline_blank</i>";
 
-    unfinishedTask.appendChild(listItem);
+    unfinishedTasks.appendChild(listItem);
     bindTaskEvents(listItem, finishTask);
-
+    save();
 }
 
 function bindTaskEvents(listItem,checkboxEvent) {
@@ -96,4 +100,41 @@ function bindTaskEvents(listItem,checkboxEvent) {
     editButton.onclick=editTask;
     deleteButton.onclick=deleteTask;
 
+}
+function save() {
+    
+    var unfinishedTasksArr=[];
+    for(var i=0; i<unfinishedTasks.chikdren.length; i++) {
+        unfinishedTasksArr.push(unfinishedTasks.children[i].getElementsByTagName('label')[0].innerText);
+    }
+
+    var finishedTasksarr=[];
+    for(var i=0; i<finishedTasks.chikdren.length; i++) {
+        finishedTasksArr.push(finishedTasks.children[i].getElementsByTagName('label')[0].innerText);
+        
+    }
+
+    localStorage.removeItem('todo');
+    localStorage.setItem('todo',JSON.stringify({
+        unfinishedTasks: unfinishedTasksArr,
+         finishedTasks: finishedTasksarr
+    }));
+
+}
+
+function load() {
+    return JSON.parse(localStorage.getItem('todo'));
+}
+
+var data=load();
+for(var i=0; i<DataTransfer.unfinishedTasks.length;i++) {
+    var listItem=createNewElement(data.unfinishedTasks[i]);
+    unfinishedTasks.appendChild(listItem);
+    bindTaskEvents(listItem, finishTask);
+}
+
+for(var i=0; i<data.finishedTasks.length; i++){
+    var listItem=createNewElement(data.finishedTasks[i]);
+    finishedTasks.appendChild(listItem);
+    bindTaskEvents(listItem, unfinishTask);
 }
