@@ -1,140 +1,146 @@
-var addButton=document.getElementById('add');
-var inputTask=document.getElementById('new-task');
-var unfinishedTasks=document.getElementById('unfinished-tasks');
-var finishedTasks=document.getElementById('finished-tasks');
+const taskInput = document.getElementById('task-input');
+const taskAddButton = document.getElementById('task-add');
 
+const tasksListUnfinished = document.getElementById('tasks-unfinished');
+const tasksListFinished = document.getElementById('tasks-finished');
 
-function createNewElement(task) {
-    var listItem=document.createElement('li');
-    var checkbox=document.createElement('button');
-    checkbox.className="material-icons checkbox";
-    checkbox.innerHTML="<i class='material-icons'>check_box_outline_blank</i>";
-    var label=document.createElement('label');
-    label.innerText=task;
-    var input=document.createElement('input');
-    input.type="text";
-    var editButton=document.createElement('button');
-    editButton.className="material-icons edit";
-    editButton.innerHTML="<i class='material-icons'>edit</i>";
-    var deleteButton=document.createElement('button');
-    deleteButton.className="material-icons delete";
-    deleteButton.innerHTML="<i class='material-icons'>delete</i>";
-
-    listItem.appendChild(checkbox);
-    listItem.appendChild(label);
-    listItem.appendChild(input);
-    listItem.appendChild(deleteButton);
-    listItem.appendChild(editButton);
-    
-    return listItem;
-}
-
-function addTask() {
-    if(inputTask.value) {
-        var listItem=createNewElement(inputTask.value);
-        unfinishedTasks.appendChild(listItem);
-        bindTaskEvents(listItem,finishTask)
-        inputTask.value="";
+const storage = {
+    keys: {
+        lastIndex: 'lastIndex',
+        tasks: 'tasks',
+    },
+    load(name, defaultValue = null) {
+        return JSON.parse(localStorage.getItem(name)) ?? defaultValue;
+    },
+    save(name, value) {
+        localStorage.setItem(name, JSON.stringify(value));
     }
-    save();
+};
+
+let tasks = storage.load(storage.keys.tasks, []);
+let lastIndex = storage.load(storage.keys.lastIndex, 0);
+
+function toggleTask(id, completed) {
+    const newTasks = tasks.map(task => {
+        if (task.id === id) {
+            return { ...task, completed: !completed };
+        }
+        return task;
+    });
+    tasks = newTasks;
+    storage.save(storage.keys.tasks, tasks);
+    render();
 }
-addButton.onclick=addTask;
 
-function deleteTask() {
-var listItem=this.parentNode;
-var ul=listItem.parentNode;
-ul.removeChild(listItem);
-save();
-}
-
-function editTask() {
-    var editButton=this;
-    var listItem=this.parentNode;
-    var label=listItem.querySelector('label');
-    var input=listItem.querySelector('input[type=text]');
-
-    var conteintsClass=listItem.classList.contains('editMode');
-
-
-    if(conteintsClass) {
-        label.innerText=input.value;
-        editButton.className="material-icons edit";
-        editButton.innerHTML="<i class='material-icons'>edit</i>";
-        save();
+function editTask(id, input, editing) {
+    if (editing) {
+        const newTitle = input.value.trim();
+        const newTasks = tasks.map(task => {
+            if (task.id === id && newTitle) {
+                return { ...task, title: newTitle, editing: false };
+            }
+            return task;
+        });
+        tasks = newTasks;
     } else {
-        input.value=label.innerText;
-        editButton.className="material-icons save";
-        editButton.innerHTML="<i class='material-icons'>save</i>";
-
+        tasks = tasks.map(task => {
+            if (task.id === id) {
+                return { ...task, editing: true };
+            }
+            return task;
+        });
     }
-    listItem.classList.toggle('editMode');
+    storage.save(storage.keys.tasks, tasks);
+    render();
 }
 
-function finishTask() {
-    var listItem=this.parentNode;
-    var checkbox=listItem.querySelector('button.checkbox');
-    checkbox.className="material-icons checkbox";
-    checkbox.innerHTML="<i class='material-icons'>check_box</i>";
-    finishedTasks.appendChild(listItem);
-    bindTaskEvents(listItem,unfinishTask);
-    save();
+function deleteTask(id) {
+    const newTasks = tasks.filter(task => task.id !== id);
+    tasks = newTasks;
+    storage.save(storage.keys.tasks, tasks);
+    render();
 }
 
-function unfinishTask() {
-    var listItem=this.parentNode;
-    var checkbox=listItem.querySelector('button.checkbox');
-    checkbox.className="material-icons checkbox";
-    checkbox.innerHTML="<i class='material-icons'>check_box_outline_blank</i>";
+function createTaskElement({ id, title, completed = false, editing = false }) {
+    const taskElement = document.createElement('li');
 
-    unfinishedTasks.appendChild(listItem);
-    bindTaskEvents(listItem, finishTask);
-    save();
+    const checkbox=document.createElement('button');
+    checkbox.classList.add('material-icons');
+    checkbox.classList.add('checkbox');
+    checkbox.innerHTML = `<i class="material-icons">${completed ? 'check_box' : 'check_box_outline_blank'}</i>`;
+    checkbox.addEventListener('click', () => toggleTask(id, completed));
+
+    const label = document.createElement('h4');
+    if (editing) {
+        label.classList.add('not-visible');
+    }
+    label.innerText = title;
+
+    const input = document.createElement('input');
+    if (!editing) {
+        input.classList.add('not-visible');
+    }
+    input.type = 'text';
+    input.value = title;
+
+    const editButton = document.createElement('button');
+    editButton.classList.add('material-icons');
+    editButton.classList.add(editing ? 'save' : 'edit');
+    editButton.innerHTML = `<i class="material-icons">${editing ? 'save' : 'edit'}</i>`;
+    editButton.addEventListener('click', () => editTask(id, input, editing));
+
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('material-icons');
+    deleteButton.classList.add('delete');
+    deleteButton.innerHTML = '<i class="material-icons">delete</i>';
+    deleteButton.addEventListener('click', () => deleteTask(id));
+
+    taskElement.appendChild(checkbox);
+    taskElement.appendChild(label);
+    taskElement.appendChild(input);
+    taskElement.appendChild(deleteButton);
+    taskElement.appendChild(editButton);
+
+    return taskElement;
 }
 
-function bindTaskEvents(listItem,checkboxEvent) {
-    var checkbox=listItem.querySelector('button.checkbox');
-    var editButton=listItem.querySelector('button.edit');
-    var deleteButton=listItem.querySelector('button.delete');
+function render() {
+    tasksListUnfinished.innerHTML = null;
+    tasksListFinished.innerHTML = null;
+    const tasksUnfinished = [];
+    const tasksFinished = [];
 
-    checkbox.onclick=checkboxEvent;
-    editButton.onclick=editTask;
-    deleteButton.onclick=deleteTask;
-
-}
-function save() {
-    
-    var unfinishedTasksArr=[];
-    for(var i=0; i<unfinishedTasks.chikdren.length; i++) {
-        unfinishedTasksArr.push(unfinishedTasks.children[i].getElementsByTagName('label')[0].innerText);
+    for (const task of tasks) {
+        if (task.completed) {
+            tasksFinished.push(task);
+        } else {
+            tasksUnfinished.push(task);
+        }
     }
 
-    var finishedTasksarr=[];
-    for(var i=0; i<finishedTasks.chikdren.length; i++) {
-        finishedTasksArr.push(finishedTasks.children[i].getElementsByTagName('label')[0].innerText);
-        
+    for (const task of tasksUnfinished) {
+        const taskElement = createTaskElement(task);
+        tasksListUnfinished.appendChild(taskElement);
     }
+    for (const task of tasksFinished) {
+        const taskElement = createTaskElement(task);
+        tasksListFinished.appendChild(taskElement);
+    }
+}
+render();
 
-    localStorage.removeItem('todo');
-    localStorage.setItem('todo',JSON.stringify({
-        unfinishedTasks: unfinishedTasksArr,
-         finishedTasks: finishedTasksarr
-    }));
+function addNewTask() {
+    const title = taskInput.value.trim();
 
+    if (title) {
+        const taskElement = createTaskElement({ id: lastIndex, title });
+        tasksListUnfinished.appendChild(taskElement);
+        taskInput.value = '';
+        tasks.push({ id: lastIndex, title, completed: false, editing: false });
+        storage.save(storage.keys.tasks, tasks);
+        lastIndex++;
+        storage.save(storage.keys.lastIndex, lastIndex);
+    }
 }
 
-function load() {
-    return JSON.parse(localStorage.getItem('todo'));
-}
-
-var data=load();
-for(var i=0; i<DataTransfer.unfinishedTasks.length;i++) {
-    var listItem=createNewElement(data.unfinishedTasks[i]);
-    unfinishedTasks.appendChild(listItem);
-    bindTaskEvents(listItem, finishTask);
-}
-
-for(var i=0; i<data.finishedTasks.length; i++){
-    var listItem=createNewElement(data.finishedTasks[i]);
-    finishedTasks.appendChild(listItem);
-    bindTaskEvents(listItem, unfinishTask);
-}
+taskAddButton.addEventListener('click', addNewTask);
